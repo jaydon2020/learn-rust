@@ -3,7 +3,10 @@
 //! You will implement simple operations on vectors and matrices.
 
 use std::cmp::PartialEq;
-use std::ops::Mul;
+use std::ops::{Div, Mul};
+use std::process::Output;
+
+use rayon::iter::repeat;
 
 /// 2x2 matrix of the following configuration:
 ///
@@ -44,7 +47,13 @@ impl Mul<Mat2> for Mat2 {
 
     /// Consult <https://www.mathsisfun.com/algebra/matrix-multiplying.html>
     fn mul(self, rhs: Mat2) -> Self::Output {
-        todo!()
+        println!("{:?}*{:?}", self, rhs);
+        Mat2 {
+            a: self.a * rhs.a + self.b * rhs.c,
+            b: self.a * rhs.b + self.b * rhs.d,
+            c: self.c * rhs.a + self.d * rhs.c,
+            d: self.c * rhs.b + self.d * rhs.d,
+        }
     }
 }
 
@@ -55,21 +64,40 @@ impl Mul<Vec2> for Mat2 {
     ///
     /// Consult <https://www.mathsisfun.com/algebra/matrix-multiplying.html>
     fn mul(self, rhs: Vec2) -> Self::Output {
-        todo!()
+        Vec2 {
+            a: self.a * rhs.a + self.b * rhs.b,
+            b: self.c * rhs.a + self.d * rhs.b,
+        }
     }
 }
 
 impl Mat2 {
     /// Calculates the power of matrix.
     fn power(self, power: u64) -> Mat2 {
-        todo!()
+        if power == 0 {
+            return self;
+        }
+
+        let mut result = self;
+        let mut num = 1;
+
+        while num < power {
+            result = result.mul(self);
+
+            num += 1;
+        }
+        result
     }
 }
 
 impl Vec2 {
     /// Gets the upper value of vector.
     fn get_upper(self) -> u64 {
-        todo!()
+        if self.a > self.b {
+            self.a
+        } else {
+            self.b
+        }
     }
 }
 
@@ -120,7 +148,13 @@ impl FMat2 {
     /// );
     /// ```
     pub fn inverse(self) -> Self {
-        todo!()
+        let offset = 1_f64.div(self.a * self.d - self.b * self.c);
+        FMat2 {
+            a: offset * self.d,
+            b: offset * self.b * -1_f64,
+            c: offset * self.c * -1_f64,
+            d: offset * self.a,
+        }
     }
 }
 
