@@ -1,7 +1,12 @@
 //! Small problems.
 
+use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
-use std::fmt;
+use std::fmt::format;
+use std::{default, fmt};
+
+use itertools::Itertools;
+use rayon::collections::hash_set;
 
 /// Day of week.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -26,7 +31,15 @@ pub enum DayOfWeek {
 ///
 /// `next_weekday(Thu)` is `Fri`; and `next_weekday(Fri)` is `Mon`.
 pub fn next_weekday(day: DayOfWeek) -> DayOfWeek {
-    todo!()
+    match day {
+        DayOfWeek::Sun => DayOfWeek::Mon,
+        DayOfWeek::Mon => DayOfWeek::Tue,
+        DayOfWeek::Tue => DayOfWeek::Wed,
+        DayOfWeek::Wed => DayOfWeek::Thu,
+        DayOfWeek::Thu => DayOfWeek::Fri,
+        DayOfWeek::Fri => DayOfWeek::Mon,
+        DayOfWeek::Sat => DayOfWeek::Mon,
+    }
 }
 
 /// Given a list of integers, returns its median (when sorted, the value in the middle position).
@@ -52,7 +65,17 @@ pub fn next_weekday(day: DayOfWeek) -> DayOfWeek {
 ///
 /// Returns `None` if the list is empty.
 pub fn median(values: Vec<isize>) -> Option<isize> {
-    todo!()
+    let mut sort: Vec<isize> = values.clone();
+    sort.sort();
+    if sort.is_empty() {
+        None
+    } else if sort.len() % 2 == 0 {
+        let element = sort.len() / 2;
+        Some(sort[element])
+    } else {
+        let element = (sort.len() + 1) / 2 - 1;
+        Some(sort[element])
+    }
 }
 
 /// Given a list of integers, returns its smallest mode (the value that occurs most often; a hash
@@ -60,7 +83,17 @@ pub fn median(values: Vec<isize>) -> Option<isize> {
 ///
 /// Returns `None` if the list is empty.
 pub fn mode(values: Vec<isize>) -> Option<isize> {
-    todo!()
+    let mut map: HashMap<isize, isize> = HashMap::new();
+    for element in values {
+        let count = map.entry(element).and_modify(|v| *v += 1).or_insert(1);
+    }
+
+    map.iter()
+        .max_by(|(k1, v1), (k2, v2)| match v1.cmp(v2) {
+            Ordering::Equal => k2.cmp(k1), // reverse so smaller key wins in max_by
+            other => other,
+        })
+        .map(|(k, _)| *k)
 }
 
 /// Converts the given string to Pig Latin. Use the rules below to translate normal English into Pig
@@ -83,33 +116,99 @@ pub fn mode(values: Vec<isize>) -> Option<isize> {
 ///
 /// You may assume the string only contains lowercase alphabets, and it contains at least one vowel.
 pub fn piglatin(input: String) -> String {
-    todo!()
+    let mut move_str = input.clone();
+    let ch: char = input.chars().next().unwrap();
+    if ch == 'a' || ch == 'e' || ch == 'i' || ch == 'o' || ch == 'u' {
+        return input + "hay";
+    }
+    for i in input.chars() {
+        if i == 'a' || i == 'e' || i == 'i' || i == 'o' || i == 'u' {
+            return move_str + "ay";
+        } else {
+            let mut chars = move_str.chars();
+            let _ = chars.next().ok_or(0);
+            move_str = chars.as_str().to_owned();
+            move_str.push(i);
+        }
+    }
+
+    input + "hay"
 }
 
 /// Converts HR commands to the organization table.
 ///
-/// If the commands are as follows:
-///
-/// ```ignore
-/// vec!["Add Amir to Engineering", "Add Sally to Sales", "Remove Jeehoon from Sales", "Move Amir from Engineering to Sales"]
-/// ```
-///
-/// The return value should be:
-///
-/// ```ignore
-/// ["Sales" -> ["Amir", "Sally"]]
-/// ```
-///
-/// - The result is a map from department to the list of its employees.
-/// - An empty department should not appear in the result.
-/// - There are three commands: "Add {person} to {department}", "Remove {person} from {department}",
-///   and "Move {person} from {department} to {department}".
-/// - If a command is not executable, then it's ignored.
-/// - There is no space in the name of the person and department.
-///
-/// See the test function for more details.
+/// - Map from department -> set of employees
+/// - Empty departments are removed / do not appear
+/// - Commands:
+///   - "Add {person} to {department}"
+///   - "Remove {person} from {department}"
+///   - "Move {person} from {department} to {department}"
+/// - Ignore invalid / non-executable commands
+/// - No spaces in names or department identifiers
 pub fn organize(commands: Vec<String>) -> HashMap<String, HashSet<String>> {
-    todo!()
+    let mut org: HashMap<String, HashSet<String>> = HashMap::new();
+
+    for cmd in commands {
+        let parts: Vec<&str> = cmd.split_whitespace().collect();
+
+        match parts.as_slice() {
+            // Add Sally to Sales
+            ["Add", person, "to", dept] => {
+                // Get or create the set for the department, then insert person
+                let _unused = org
+                    .entry((*dept).to_string())
+                    .or_default()
+                    .insert((*person).to_string());
+            }
+
+            // Remove Jeehoon from Sales
+            ["Remove", person, "from", dept] => {
+                if let Some(set) = org.get_mut(*dept) {
+                    let _unused = set.remove(*person);
+                    if set.is_empty() {
+                        // Remove empty department
+                        let _unused = org.remove(*dept);
+                    }
+                }
+                // If dept doesn't exist, or person not in dept -> ignore
+            }
+
+            // Move Amir from Engineering to Sales
+            ["Move", person, "from", from_dept, "to", to_dept] => {
+                // Must exist in from_dept first; otherwise ignore
+                let mut moved = false;
+                if let Some(from_set) = org.get_mut(*from_dept) {
+                    if from_set.remove(*person) {
+                        moved = true;
+                        if from_set.is_empty() {
+                            // Removing from empty department after move
+                            // (we'll remove it below after borrowing ends)
+                        }
+                    }
+                }
+
+                if moved {
+                    let _unused = org
+                        .entry((*to_dept).to_string())
+                        .or_default()
+                        .insert((*person).to_string());
+
+                    // Now clean up `from_dept` if it exists and became empty
+                    // (Need a second lookup because of previous mutable borrow scope)
+                    if let Some(from_set) = org.get_mut(*from_dept) {
+                        if from_set.is_empty() {
+                            let _unused = org.remove(*from_dept);
+                        }
+                    }
+                }
+            }
+
+            // Anything else is ignored
+            _ => { /* ignore non-matching or malformed commands */ }
+        }
+    }
+
+    org
 }
 
 /// Events in a text editor.
@@ -129,6 +228,33 @@ pub enum TypeEvent {
 /// processes the given `events` in order and returns the resulting string.
 ///
 /// See the test function `test_editor` for examples.
+
 pub fn use_editor(events: Vec<TypeEvent>) -> String {
-    todo!()
+    let mut text = String::new();
+    let mut clipboard = String::new();
+
+    for event in events {
+        match event {
+            TypeEvent::Type(ch) => {
+                text.push(ch);
+            }
+            TypeEvent::Backspace => {
+                // Remove last Unicode scalar if any
+                if let Some(last) = text.pop() {};
+            }
+            TypeEvent::Copy => {
+                // Copy entire current buffer to clipboard
+                // Avoid new allocation strategy if you prefer:
+                // clipboard.clear();
+                // clipboard.push_str(&text);
+                clipboard = text.clone();
+            }
+            TypeEvent::Paste => {
+                // Append clipboard contents
+                text.push_str(&clipboard);
+            }
+        }
+    }
+
+    text
 }
