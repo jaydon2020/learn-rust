@@ -1,9 +1,11 @@
 //! Semiring
 
+use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt::Debug;
 
 use itertools::Itertools;
+use ndarray_rand::rand_distr::num_traits::zero;
 
 /// Semiring.
 ///
@@ -33,55 +35,55 @@ pub fn from_usize<T: Semiring>(value: usize) -> T {
 
 impl Semiring for u64 {
     fn zero() -> Self {
-        todo!()
+        0_u64
     }
 
     fn one() -> Self {
-        todo!()
+        1_u64
     }
 
     fn add(&self, rhs: &Self) -> Self {
-        todo!()
+        *self + *rhs
     }
 
     fn mul(&self, rhs: &Self) -> Self {
-        todo!()
+        *self * *rhs
     }
 }
 
 impl Semiring for i64 {
     fn zero() -> Self {
-        todo!()
+        0_i64
     }
 
     fn one() -> Self {
-        todo!()
+        1_i64
     }
 
     fn add(&self, rhs: &Self) -> Self {
-        todo!()
+        *self + *rhs
     }
 
     fn mul(&self, rhs: &Self) -> Self {
-        todo!()
+        *self * *rhs
     }
 }
 
 impl Semiring for f64 {
     fn zero() -> Self {
-        todo!()
+        0_f64
     }
 
     fn one() -> Self {
-        todo!()
+        1_f64
     }
 
     fn add(&self, rhs: &Self) -> Self {
-        todo!()
+        *self + *rhs
     }
 
     fn mul(&self, rhs: &Self) -> Self {
-        todo!()
+        *self * *rhs
     }
 }
 
@@ -105,42 +107,119 @@ pub struct Polynomial<C: Semiring> {
 
 impl<C: Semiring> Semiring for Polynomial<C> {
     fn zero() -> Self {
-        todo!()
+        Self {
+            coefficients: HashMap::new(),
+        }
     }
 
     fn one() -> Self {
-        todo!()
+        Self::term(C::one(), 0_u64)
     }
 
     fn add(&self, rhs: &Self) -> Self {
-        todo!()
+        let mut out = self.coefficients.clone();
+
+        for (deg, coef_rhs) in rhs.coefficients.iter() {
+            match out.entry(*deg) {
+                Entry::Vacant(e) => {
+                    if *coef_rhs != C::zero() {
+                        let _ = e.insert(coef_rhs.clone());
+                    }
+                }
+                Entry::Occupied(mut e) => {
+                    let new_val = e.get().add(coef_rhs);
+                    if new_val == C::zero() {
+                        let _unused = e.remove();
+                    } else {
+                        *e.get_mut() = new_val;
+                    }
+                }
+            }
+        }
+
+        Self { coefficients: out }
     }
 
     fn mul(&self, rhs: &Self) -> Self {
-        todo!()
+        // Start from the zero polynomial (prefer empty map)
+        let mut out: HashMap<u64, C> = HashMap::new();
+
+        for (deg_l, coef_l) in self.coefficients.iter() {
+            for (deg_r, coef_r) in rhs.coefficients.iter() {
+                let deg = *deg_l + *deg_r;
+                let prod = coef_l.mul(coef_r);
+
+                if prod == C::zero() {
+                    continue;
+                }
+
+                match out.entry(deg) {
+                    Entry::Vacant(e) => {
+                        let _ = e.insert(prod);
+                    }
+                    Entry::Occupied(mut e) => {
+                        let new_val = e.get().add(&prod);
+                        if new_val == C::zero() {
+                            let _unused = e.remove();
+                        } else {
+                            *e.get_mut() = new_val;
+                        }
+                    }
+                }
+            }
+        }
+
+        Self { coefficients: out }
     }
 }
 
 impl<C: Semiring> Polynomial<C> {
     /// Constructs polynomial `x`.
     pub fn x() -> Self {
-        todo!()
+        Self::term(C::one(), 1)
     }
 
     /// Evaluates the polynomial with the given value.
     pub fn eval(&self, value: C) -> C {
-        todo!()
+        let mut result = C::zero();
+
+        for (deg, coef) in self.coefficients.iter() {
+            let mut pow = C::one();
+            for _ in 0..*deg {
+                pow = pow.mul(&value);
+            }
+            let term_value = coef.mul(&pow);
+            result = result.add(&term_value)
+        }
+
+        result
     }
 
     /// Constructs polynomial `ax^n`.
     pub fn term(a: C, n: u64) -> Self {
-        todo!()
+        if a == C::zero() {
+            return Self {
+                coefficients: HashMap::new(),
+            };
+        }
+
+        let mut coeffs = HashMap::new();
+        let _unused = coeffs.insert(n, a);
+        Self {
+            coefficients: coeffs,
+        }
     }
 }
 
 impl<C: Semiring> From<C> for Polynomial<C> {
     fn from(value: C) -> Self {
-        todo!()
+        if value == C::zero() {
+            Self {
+                coefficients: HashMap::new(),
+            }
+        } else {
+            Self::term(value, 0)
+        }
     }
 }
 
@@ -160,10 +239,61 @@ impl<C: Semiring> From<C> for Polynomial<C> {
 /// Consult `assignment06/grade.rs` for example valid strings.
 ///
 /// Hint: `.split`, `.parse`, and `Polynomial::term`
+
 impl<C: Semiring> std::str::FromStr for Polynomial<C> {
     type Err = (); // Ignore this for now...
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        todo!()
+        // Optional: handle empty string defensively (not required by your assumptions)
+        if s.trim().is_empty() {
+            return Ok(Self {
+                coefficients: HashMap::new(),
+            });
+        }
+
+        let mut coefficients: HashMap<u64, C> = HashMap::new();
+
+        // Terms are separated by " + " exactly, per assumptions.
+        for term in s.split(" + ") {
+            let term = term.trim(); // safe even if input is well-formed
+
+            // Parse one term into (degree, coefficient)
+            let (deg, coef): (u64, C) = if term == "x" {
+                (1, C::one())
+            } else if let Some((coef_part, deg_part)) = term.split_once("x^") {
+                // "x^n" or "ax^n"
+                let deg: u64 = deg_part.parse().unwrap();
+
+                let coef = if coef_part.is_empty() {
+                    C::one()
+                } else {
+                    let a: usize = coef_part.parse().unwrap();
+                    from_usize::<C>(a)
+                };
+
+                (deg, coef)
+            } else if let Some(coef_part) = term.strip_suffix('x') {
+                // "ax" (and this also matches "x", but we handled "x" above)
+                let coef = if coef_part.is_empty() {
+                    C::one()
+                } else {
+                    let a: usize = coef_part.parse().unwrap();
+                    from_usize::<C>(a)
+                };
+
+                (1, coef)
+            } else {
+                // constant term "a"
+                let a: usize = term.parse().unwrap();
+                (0, from_usize::<C>(a))
+            };
+
+            // Assumption: All terms have unique degrees.
+            // Insert and (optionally) debug-assert uniqueness.
+            let prev = coefficients.insert(deg, coef);
+            debug_assert!(prev.is_none(), "duplicate degree {} in input: {}", deg, s);
+        }
+
+        Ok(Self { coefficients })
     }
 }
