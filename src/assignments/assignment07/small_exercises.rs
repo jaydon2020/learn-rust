@@ -10,7 +10,34 @@ impl<T: Eq> Iterator for FindIter<'_, T> {
     type Item = usize;
 
     fn next(&mut self) -> Option<Self::Item> {
-        todo!()
+        let n = self.base.len();
+        let m = self.query.len();
+
+        // Define empty-pattern semantics: yield every position 0..=n
+        if m == 0 {
+            if self.curr <= n {
+                let i = self.curr;
+                self.curr += 1;
+                return Some(i);
+            }
+            return None;
+        }
+
+        let mut i = self.curr;
+        // Only positions where a full match can start
+        while i + m <= n {
+            if self.base[i..].starts_with(self.query) {
+                let pos = i;
+                // Overlapping behavior: slide by 1. For non-overlapping, use i + m.
+                self.curr = i + 1;
+                return Some(pos);
+            }
+            i += 1;
+        }
+
+        // Exhausted: make subsequent calls cheap
+        self.curr = n;
+        None
     }
 }
 
@@ -26,12 +53,18 @@ pub fn find<'s, T: Eq>(query: &'s [T], base: &'s [T]) -> impl 's + Iterator<Item
 /// Implement generic fibonacci iterator
 struct FibIter<T> {
     // TODO: remove `_marker` and add necessary fields as you want
+    first: T,
+    second: T,
     _marker: std::marker::PhantomData<T>,
 }
 
 impl<T: std::ops::Add<Output = T> + Copy> FibIter<T> {
     fn new(first: T, second: T) -> Self {
-        todo!()
+        FibIter {
+            first,
+            second,
+            _marker: std::marker::PhantomData,
+        }
     }
 }
 
@@ -42,7 +75,11 @@ where
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        todo!()
+        let out = self.first;
+        let next = self.first + self.second;
+        self.first = self.second;
+        self.second = next;
+        Some(out)
     }
 }
 
@@ -53,8 +90,7 @@ pub fn fib<T>(first: T, second: T) -> impl Iterator<Item = T>
 where
     T: std::ops::Add<Output = T> + Copy,
 {
-    todo!("replace `std::iter::empty() with your own implementation`");
-    std::iter::empty()
+    FibIter::new(first, second)
 }
 
 /// Endpoint of range, inclusive or exclusive.
@@ -69,11 +105,40 @@ pub enum Endpoint {
 
 struct RangeIter {
     // TODO: add necessary fields as you want
+    left_val: isize,
+    right_val: isize,
+    step: isize,
 }
 
 impl RangeIter {
     fn new(endpoints: (Endpoint, Endpoint), step: isize) -> Self {
-        todo!()
+        let lhs = match endpoints.0 {
+            Endpoint::Inclusive(val) => val,
+            Endpoint::Exclusive(val) => {
+                if step > 0 {
+                    val + 1
+                } else {
+                    val - 1
+                }
+            }
+        };
+
+        let rhs = match endpoints.1 {
+            Endpoint::Inclusive(val) => {
+                if step > 0 {
+                    val + 1
+                } else {
+                    val - 1
+                }
+            }
+            Endpoint::Exclusive(val) => val,
+        };
+
+        Self {
+            left_val: lhs,
+            right_val: rhs,
+            step,
+        }
     }
 }
 
@@ -81,14 +146,27 @@ impl Iterator for RangeIter {
     type Item = isize;
 
     fn next(&mut self) -> Option<Self::Item> {
-        todo!()
+        if self.step > 0 {
+            if self.left_val >= self.right_val {
+                None
+            } else {
+                let ret = self.left_val;
+                self.left_val += self.step;
+                Some(ret)
+            }
+        } else if self.left_val <= self.right_val {
+            None
+        } else {
+            let ret = self.left_val;
+            self.left_val += self.step;
+            Some(ret)
+        }
     }
 }
 
 /// Returns an iterator over the range [left, right) with the given step.
 pub fn range(left: Endpoint, right: Endpoint, step: isize) -> impl Iterator<Item = isize> {
-    todo!("replace `std::iter::empty() with your own implementation`");
-    std::iter::empty()
+    RangeIter::new((left, right), step)
 }
 
 /// Write an iterator that returns all divisors of n in increasing order.
@@ -101,13 +179,29 @@ pub fn range(left: Endpoint, right: Endpoint, step: isize) -> impl Iterator<Item
 struct Divisors {
     n: u64,
     // TODO: you may define additional fields here
+    i: u64,
+    large: Vec<u64>,
 }
 
 impl Iterator for Divisors {
     type Item = u64;
 
     fn next(&mut self) -> Option<Self::Item> {
-        todo!()
+        // Scan small divisors
+        while self.i * self.i <= self.n {
+            let i = self.i;
+            self.i += 1;
+
+            if self.n % i == 0 {
+                let j = self.n / i;
+                if j != i {
+                    self.large.push(j);
+                }
+                return Some(i);
+            }
+        }
+
+        self.large.pop()
     }
 }
 
@@ -116,5 +210,7 @@ pub fn divisors(n: u64) -> impl Iterator<Item = u64> {
     Divisors {
         n,
         // TODO: you may define additional fields here
+        i: 1,
+        large: Vec::new(),
     }
 }
