@@ -35,17 +35,28 @@ pub fn zero<T: 'static>() -> Church<T> {
 
 /// Implement a function to add 1 to a given Church numeral.
 pub fn succ<T: 'static>(n: Church<T>) -> Church<T> {
-    todo!()
+    Rc::new(move |f| {
+        let f_n = n(Rc::clone(&f));
+        Rc::new(move |x| f(f_n(x)))
+    })
 }
 
 /// Implement a function to add two Church numerals.
 pub fn add<T: 'static>(n: Church<T>, m: Church<T>) -> Church<T> {
-    todo!()
+    Rc::new(move |f| {
+        let f_n = n(Rc::clone(&f));
+        let f_m = n(Rc::clone(&f));
+        Rc::new(move |x| f_m(f_n(x)))
+    })
 }
 
 /// Implement a function to multiply (mult) two Church numerals.
 pub fn mult<T: 'static>(n: Church<T>, m: Church<T>) -> Church<T> {
-    todo!()
+    Rc::new(move |f| {
+        let f_n = n(Rc::clone(&f));
+        let f_m_n = m(Rc::clone(&f_n));
+        Rc::new(move |x| f_m_n(x))
+    })
 }
 
 /// Implement a function to raise one Church numeral to the power of another.
@@ -57,17 +68,43 @@ pub fn mult<T: 'static>(n: Church<T>, m: Church<T>) -> Church<T> {
 /// `pow`-like method.
 pub fn exp<T: 'static>(n: usize, m: usize) -> Church<T> {
     // ACTION ITEM: Uncomment the following lines and replace `todo!()` with your code.
-    // let n = from_usize(n);
-    // let m = from_usize(m);
-    todo!()
+    let church_n: Rc<dyn Fn(Rc<dyn Fn(T) -> T>) -> Rc<dyn Fn(T) -> T>> = from_usize(n);
+    let church_m: Rc<dyn Fn(Rc<dyn Fn(T) -> T>) -> Rc<dyn Fn(T) -> T>> = from_usize(m);
+    Rc::new(move |f| {
+        let f_m = Rc::clone(&church_m);
+        let f_n = Rc::clone(&church_n);
+        let mut result = f.clone();
+        for _ in 0..n {
+            result = f_n(result.clone());
+        }
+        result
+    })
 }
 
 /// Implement a function to convert a Church numeral to a usize type.
 pub fn to_usize<T: 'static + Default>(n: Church<T>) -> usize {
-    todo!()
+    let count = Rc::new(RefCell::new(0));
+
+    let c = Rc::clone(&count);
+    let default_function: Rc<dyn Fn(T) -> T> = Rc::new(move |x| {
+        let mut count_mut = c.borrow_mut();
+        *count_mut += 1;
+        x
+    });
+
+    let result_function = n(default_function);
+
+    let _unused = result_function(Default::default());
+
+    let result = *count.borrow();
+    result
 }
 
 /// Implement a function to convert a usize type to a Church numeral.
 pub fn from_usize<T: 'static>(n: usize) -> Church<T> {
-    todo!()
+    let mut result = zero();
+    for _ in 0..n {
+        result = succ(result);
+    }
+    result
 }
