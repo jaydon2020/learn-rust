@@ -1,6 +1,6 @@
 //! Small exercises.
 
-use std::collections::HashMap;
+use std::{collections::HashMap, f64};
 
 use itertools::Itertools;
 
@@ -18,7 +18,23 @@ use itertools::Itertools;
 /// assert_eq!(is_fibonacci([1, 1, 2, 3, 5, 8, 14].into_iter()), false);
 /// ```
 pub fn is_fibonacci(inner: impl Iterator<Item = i64>) -> bool {
-    todo!()
+    let mut first = 0;
+    let mut second = 0;
+    for (i, x) in inner.enumerate() {
+        if i == 0 {
+            first = x;
+        } else if i == 1 {
+            second = x;
+        } else {
+            let next = first + second;
+            if next != x {
+                return false;
+            }
+            first = second;
+            second = next
+        }
+    }
+    true
 }
 
 /// Returns the sum of `f(v)` for all element `v` the given array.
@@ -32,7 +48,11 @@ pub fn is_fibonacci(inner: impl Iterator<Item = i64>) -> bool {
 /// assert_eq!(sigma([1, 2].into_iter(), |x| x * 4), 12);
 /// ```
 pub fn sigma<T, F: Fn(T) -> i64>(inner: impl Iterator<Item = T>, f: F) -> i64 {
-    todo!()
+    let mut sum = 0;
+    for x in inner {
+        sum += f(x);
+    }
+    sum
 }
 
 /// Alternate elements from three iterators until they have run out.
@@ -50,11 +70,34 @@ pub fn sigma<T, F: Fn(T) -> i64>(inner: impl Iterator<Item = T>, f: F) -> i64 {
 /// );
 /// ```
 pub fn interleave3<T>(
-    list1: impl Iterator<Item = T>,
-    list2: impl Iterator<Item = T>,
-    list3: impl Iterator<Item = T>,
+    mut list1: impl Iterator<Item = T>,
+    mut list2: impl Iterator<Item = T>,
+    mut list3: impl Iterator<Item = T>,
 ) -> Vec<T> {
-    todo!()
+    let mut merge: Vec<T> = Vec::new();
+    let mut err = 0;
+    loop {
+        if let Some(x) = list1.next() {
+            merge.push(x);
+        } else {
+            err += 1;
+        }
+        if let Some(x) = list2.next() {
+            merge.push(x);
+        } else {
+            err += 1;
+        }
+        if let Some(x) = list3.next() {
+            merge.push(x);
+        } else {
+            err += 1;
+        }
+
+        if err >= 3 {
+            break;
+        }
+    }
+    merge
 }
 
 /// Alternate elements from array of n iterators until they have run out.
@@ -74,8 +117,22 @@ pub fn interleave3<T>(
 pub fn interleave_n<T, const N: usize>(
     mut iters: [impl Iterator<Item = T>; N],
 ) -> impl Iterator<Item = T> {
-    todo!();
-    std::iter::empty()
+    let mut merge: Vec<T> = Vec::new();
+    let mut err = 0;
+    loop {
+        for i in 0..N {
+            if let Some(x) = iters[i].next() {
+                merge.push(x);
+            } else {
+                err += 1;
+            }
+        }
+
+        if err >= N {
+            break;
+        }
+    }
+    merge.into_iter()
 }
 
 /// Returns mean of k smallest value's mean.
@@ -95,7 +152,9 @@ pub fn interleave_n<T, const N: usize>(
 /// );
 /// ```
 pub fn k_smallest_mean(inner: impl Iterator<Item = i64>, k: usize) -> f64 {
-    todo!()
+    let mut sort = inner.sorted();
+    let sum = sort.by_ref().take(k).sum::<i64>();
+    sum as f64 / k as f64
 }
 
 /// Returns mean for each class.
@@ -125,7 +184,21 @@ pub fn k_smallest_mean(inner: impl Iterator<Item = i64>, k: usize) -> f64 {
 /// );
 /// ```
 pub fn calculate_mean(inner: impl Iterator<Item = (String, i64)>) -> HashMap<String, f64> {
-    todo!()
+    let mut process: HashMap<String, (i64, usize)> = HashMap::new();
+    let mut result: HashMap<String, f64> = HashMap::new();
+    for (courses, marks) in inner {
+        let _unused = process
+            .entry(courses)
+            .and_modify(|x| {
+                x.0 += marks;
+                x.1 += 1;
+            })
+            .or_insert((marks, 1));
+    }
+    for tmp in process {
+        let _unused = result.insert(tmp.0, tmp.1 .0 as f64 / tmp.1 .1 as f64);
+    }
+    result
 }
 
 /// Among the cartesian product of input vectors, return the number of sets whose sum equals `n`.
@@ -147,7 +220,21 @@ pub fn calculate_mean(inner: impl Iterator<Item = (String, i64)>) -> HashMap<Str
 /// assert_eq!(sum_is_n(vec![vec![1, 2, 3], vec![2, 3]], 2), 0);
 /// ```
 pub fn sum_is_n(inner: Vec<Vec<i64>>, n: i64) -> usize {
-    todo!()
+    let mut sum_vec: Vec<i64> = Vec::new();
+    for (i, vec) in inner.iter().enumerate() {
+        if i == 0 {
+            sum_vec = vec.to_vec()
+        } else {
+            let mut tmp: Vec<i64> = Vec::new();
+            for item in &sum_vec {
+                for jtem in vec {
+                    tmp.push(item + jtem);
+                }
+            }
+            sum_vec = tmp
+        }
+    }
+    sum_vec.iter().filter(|&&x| x == n).count()
 }
 
 /// Returns a new vector that contains the item that appears `n` times in the input vector in
