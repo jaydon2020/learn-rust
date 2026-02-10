@@ -15,10 +15,10 @@ use itertools::*;
 /// assert_eq!(res, vec![2.0, 4.0, 6.0, 8.0, 10.0]);
 /// ```
 pub fn vec_add(lhs: &[f64], rhs: &[f64]) -> Vec<f64> {
-    todo!()
+    lhs.iter().zip(rhs.iter()).map(|(l, r)| l + r).collect()
 }
 
-/// dot product of two arrays
+/// dot product of two arrays|(l, r)|
 ///
 /// You don't know how to calculate dot product?
 /// See <https://mathinsight.org/dot_product_examples>
@@ -35,7 +35,7 @@ pub fn vec_add(lhs: &[f64], rhs: &[f64]) -> Vec<f64> {
 /// assert_eq!(res, 55.0);
 /// ```
 pub fn dot_product(lhs: &[f64], rhs: &[f64]) -> f64 {
-    todo!()
+    lhs.iter().zip(rhs.iter()).map(|(l, r)| l * r).sum()
 }
 
 /// Matrix multiplication
@@ -68,5 +68,14 @@ pub fn dot_product(lhs: &[f64], rhs: &[f64]) -> f64 {
 /// assert_eq!(ans, res);
 /// ```
 pub fn matmul(lhs: &[Vec<f64>], rhs: &[Vec<f64>]) -> Vec<Vec<f64>> {
-    todo!()
+    let mut result: Vec<Vec<f64>> = Vec::with_capacity(lhs.len());
+    for l_vec in lhs {
+        let mut row_result = Vec::with_capacity(rhs.len());
+        for r_vec in rhs {
+            let res = dot_product(l_vec, r_vec); // both are &[f64]
+            row_result.push(res);
+        }
+        result.push(row_result);
+    }
+    result
 }

@@ -251,7 +251,18 @@ pub fn sum_is_n(inner: Vec<Vec<i64>>, n: i64) -> usize {
 /// assert_eq!(find_count_n(vec![1, 2, 3, 4, 4], 1), vec![1, 2, 3]);
 /// ```
 pub fn find_count_n(inner: Vec<usize>, n: usize) -> Vec<usize> {
-    todo!()
+    let mut proc: HashMap<usize, usize> = HashMap::new();
+    for i in inner {
+        let _unused = proc.entry(i).and_modify(|count| *count += 1).or_insert(1);
+    }
+    let mut result = Vec::new();
+    for hm in proc {
+        if hm.1 == n {
+            result.push(hm.0);
+        }
+    }
+    result.sort();
+    result
 }
 
 /// Return the position of the median element in the vector.
@@ -274,8 +285,22 @@ pub fn find_count_n(inner: Vec<usize>, n: usize) -> Vec<usize> {
 /// assert_eq!(position_median(vec![1, 3, 3, 6, 7, 8, 9]), Some(3));
 /// assert_eq!(position_median(vec![1, 3, 3, 3]), Some(1));
 /// ```
-pub fn position_median<T: Ord>(inner: Vec<T>) -> Option<usize> {
-    todo!()
+pub fn position_median<T: Ord + Clone>(inner: Vec<T>) -> Option<usize> {
+    if inner.is_empty() {
+        return None;
+    }
+
+    let n = inner.len();
+    // Clone to sort and find the median value
+    let mut sorted = inner.clone();
+    sorted.sort();
+
+    // For both odd and even, the required median is at 0-based index n/2
+    // (since for even you want the upper median).
+    let median_value = &sorted[n / 2];
+
+    // Find the first position of that median value in the original vector
+    inner.iter().position(|x| x == median_value)
 }
 
 /// Returns the sum of all elements in a two-dimensional array.
@@ -290,7 +315,7 @@ pub fn position_median<T: Ord>(inner: Vec<T>) -> Option<usize> {
 /// );
 /// ```
 pub fn two_dimensional_sum(inner: impl Iterator<Item = impl Iterator<Item = i64>>) -> i64 {
-    todo!()
+    inner.flatten().sum::<i64>()
 }
 
 /// Returns whether the given string is palindrome or not.
@@ -302,5 +327,19 @@ pub fn two_dimensional_sum(inner: impl Iterator<Item = impl Iterator<Item = i64>
 ///
 /// Consult <https://en.wikipedia.org/wiki/Palindrome>.
 pub fn is_palindrome(s: String) -> bool {
-    todo!()
+    if s.is_empty() {
+        true
+    } else if s.len() == 1 {
+        true
+    } else {
+        let mut tmp = s.clone();
+        while tmp.len() >= 2 {
+            let a = tmp.remove(0);
+            let b = tmp.pop().unwrap_or_default();
+            if a != b {
+                return false;
+            }
+        }
+        true
+    }
 }
