@@ -120,8 +120,8 @@ pub fn interleave_n<T, const N: usize>(
     let mut merge: Vec<T> = Vec::new();
     let mut err = 0;
     loop {
-        for i in 0..N {
-            if let Some(x) = iters[i].next() {
+        for iter in iters.iter_mut() {
+            if let Some(x) = iter.next() {
                 merge.push(x);
             } else {
                 err += 1;
@@ -327,9 +327,7 @@ pub fn two_dimensional_sum(inner: impl Iterator<Item = impl Iterator<Item = i64>
 ///
 /// Consult <https://en.wikipedia.org/wiki/Palindrome>.
 pub fn is_palindrome(s: String) -> bool {
-    if s.is_empty() {
-        true
-    } else if s.len() == 1 {
+    if s.len() <= 1 {
         true
     } else {
         let mut tmp = s.clone();

@@ -19,12 +19,9 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         // Keep consuming until we find an element we haven't seen.
-        while let Some(item) = self.iter.next() {
-            if self.used.insert(item.clone()) {
-                return Some(item);
-            }
-        }
-        None
+        self.iter
+            .by_ref()
+            .find(|item| self.used.insert(item.clone()))
     }
 }
 
@@ -43,9 +40,9 @@ impl<T: Eq + Hash + Clone, I1: Iterator<Item = T>, I2: Iterator<Item = T>> Itera
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(x) = self.iter1.next() {
-            return Some(x);
+            Some(x)
         } else {
-            return self.iter2.next();
+            self.iter2.next()
         }
     }
 }
@@ -145,7 +142,7 @@ pub trait MyIterTools: Iterator {
     {
         let mut acc = init;
 
-        while let Some(item) = self.next() {
+        for item in self {
             acc = f(item, acc);
         }
 

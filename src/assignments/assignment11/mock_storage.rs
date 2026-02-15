@@ -46,7 +46,7 @@ pub trait Storage {
 }
 
 impl Storage for MockStorage {
-    fn upload(&self, name: &str, size: usize) -> Result<(), usize> {
+    fn upload(&self, _name: &str, _size: usize) -> Result<(), usize> {
         todo!()
     }
 
@@ -74,7 +74,7 @@ impl<'a, T: Storage> FileUploader<'a, T> {
     }
 
     /// Uploads a file to the internal storage.
-    pub fn upload(&self, name: &str, size: usize) -> Result<(), usize> {
+    pub fn upload(&self, _name: &str, _size: usize) -> Result<(), usize> {
         todo!()
     }
 }

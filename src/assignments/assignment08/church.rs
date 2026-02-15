@@ -68,8 +68,8 @@ pub fn mult<T: 'static>(n: Church<T>, m: Church<T>) -> Church<T> {
 /// `pow`-like method.
 pub fn exp<T: 'static>(n: usize, m: usize) -> Church<T> {
     // ACTION ITEM: Uncomment the following lines and replace `todo!()` with your code.
-    let church_n: Rc<dyn Fn(Rc<dyn Fn(T) -> T>) -> Rc<dyn Fn(T) -> T>> = from_usize(n);
-    let church_m: Rc<dyn Fn(Rc<dyn Fn(T) -> T>) -> Rc<dyn Fn(T) -> T>> = from_usize(m);
+    let church_n: Church<T> = from_usize(n);
+    let church_m: Church<T> = from_usize(m);
     Rc::new(move |f| {
         let f_m = Rc::clone(&church_m);
         let f_n = Rc::clone(&church_n);

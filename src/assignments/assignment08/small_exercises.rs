@@ -30,7 +30,7 @@ pub fn funny_map<T, F: Fn(T) -> T>(f: F, vs: Vec<T>) -> Vec<T> {
         .enumerate()
         .map(|(i, v)| {
             // Create a fresh adaptor that forwards to `f`
-            let mut apply_i = repeat(i, |x| f(x));
+            let mut apply_i = repeat(i, &f);
             apply_i(v)
         })
         .collect()
