@@ -4,7 +4,7 @@
 //!
 //! Refer `mock_storage_grade.rs` for test cases.
 
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
 use std::collections::HashMap;
 
 /// Mock storage.
@@ -47,15 +47,40 @@ pub trait Storage {
 
 impl Storage for MockStorage {
     fn upload(&self, _name: &str, _size: usize) -> Result<(), usize> {
-        todo!()
+        // We cannot call self.used() here because it tries to borrow() again (panic!).
+        let mut files = self.files.borrow_mut();
+
+        // 2. Calculate current usage manually from our mutable reference
+        let current_used: usize = files.values().sum();
+
+        // 3. Check if we are overwriting a file
+        // If it exists, we get its old size. If not, old size is 0.
+        let old_size = files.get(_name).copied().unwrap_or(0);
+
+        // 4. Calculate what the NEW total would be
+        // We subtract the old file (reclaiming space) and add the new one.
+        let new_total = (current_used - old_size) + _size;
+
+        // 5. Check Capacity
+        if new_total > self.capacity {
+            return Err(new_total - self.capacity); // Return how much we are over
+        }
+
+        // 6. Insert (Overwrite)
+        // insert() automatically overwrites if the key exists.
+        let _unused = files.insert(_name.to_string(), _size);
+
+        Ok(())
     }
 
     fn used(&self) -> usize {
-        todo!()
+        let files = self.files.borrow();
+
+        files.values().sum()
     }
 
     fn capacity(&self) -> usize {
-        todo!()
+        self.capacity
     }
 }
 
@@ -75,7 +100,7 @@ impl<'a, T: Storage> FileUploader<'a, T> {
 
     /// Uploads a file to the internal storage.
     pub fn upload(&self, _name: &str, _size: usize) -> Result<(), usize> {
-        todo!()
+        self.storage.upload(_name, _size)
     }
 }
 
@@ -94,6 +119,7 @@ impl<'a, T: Storage> UsageAnalyzer<'a, T> {
 
     /// Returns `true` if the usage of the internal storage is under the bound.
     pub fn is_usage_under_bound(&self) -> bool {
-        todo!()
+        let used_ratio = self.storage.used() as f64 / self.storage.capacity() as f64;
+        used_ratio < self.bound
     }
 }

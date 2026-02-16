@@ -56,12 +56,34 @@ impl TVRoom {
     ///
     /// Returns `None` if the TV room is already opened.
     pub fn open(&self) -> Option<Manager<'_>> {
-        todo!()
+        // 1. Try to borrow mutably to check and potentially update state
+        if let Ok(mut state) = self.state.try_borrow_mut() {
+            match *state {
+                TVRoomState::Opened => {
+                    // Already open, return None
+                    None
+                }
+                TVRoomState::Closed => {
+                    // 2. Open the room!
+                    *state = TVRoomState::Opened;
+
+                    // 3. Create the Manager.
+                    // Manager::new creates the 'Watcher' internally.
+                    // Note: We are passing a reference to the RefCell, not the RefMut lock.
+                    Some(Manager::new(&self.state))
+                }
+            }
+        } else {
+            None
+        }
     }
 
     /// Returns whether the TV room is opened or not.
     pub fn is_opened(&self) -> bool {
-        todo!()
+        match *self.state.borrow() {
+            TVRoomState::Opened => true,
+            TVRoomState::Closed => false,
+        }
     }
 }
 
@@ -84,7 +106,9 @@ impl<'a> Manager<'a> {
 
     /// Adds new guest to the TV room.
     pub fn new_guest(&self) -> Guest<'a> {
-        todo!()
+        Guest {
+            inner: Rc::clone(&self.inner),
+        }
     }
 }
 
@@ -108,6 +132,6 @@ impl<'a> Watcher<'a> {
 impl Drop for Watcher<'_> {
     fn drop(&mut self) {
         // When the last person leaves the TV room, the TV room should be closed.
-        todo!()
+        *self.tvstate.borrow_mut() = TVRoomState::Closed;
     }
 }
